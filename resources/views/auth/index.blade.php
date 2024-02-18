@@ -5,8 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="author" content="STMIK Bandung">
-    <meta name="theme-color" content="#000">
     <title>STMIK Bandung - Login</title>
+
+    {{-- Favicomns --}}
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/favicons/favicon-16x16.png">
+    <meta name="theme-color" content="#ffffff">
 
     {{-- Bootstrap --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
@@ -142,6 +147,9 @@
                 $('#formLogin').submit((e) => {
                     e.preventDefault();
 
+                    const url = new URL(window.location.href);
+                    const siteDst = new URL(url.searchParams.get('site')).hostname;
+
                     $.ajax({
                         url: '/authenticate',
                         type: 'POST',
@@ -151,10 +159,38 @@
                             password: $('#password').val(),
                         },
                         success: (response, status, xhr) => {
-                            console.log(response);
+                            if (xhr.status === 201) {
+                                return window.location = `/verify?site=http://${siteDst}`;
+                            }
                         },
                         error: (xhr, status) => {
-                            console.log(xhr);
+                            if (xhr.status === 401) {
+                                const { responseJSON: { message } } = xhr;
+
+                                Swal.fire({
+                                    icon: 'error',
+                                    html: message,
+                                    toast: true,
+                                    timer: 5000,
+                                    position: 'top-right',
+                                    showConfirmButton: false,
+                                    timerProgressBar: true,
+                                })
+                            } else if (xhr.status === 429) {
+                                const { responseJSON: { message } } = xhr;
+
+                                Swal.fire({
+                                    icon: 'warning',
+                                    html: message,
+                                    toast: true,
+                                    timer: 5000,
+                                    position: 'top-right',
+                                    showConfirmButton: false,
+                                    timerProgressBar: true,
+                                });
+                            } else {
+                                console.log(xhr);
+                            }
                         }
                     })
                 });

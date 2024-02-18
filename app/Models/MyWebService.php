@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Session;
 
 // * Guzzle
 use GuzzleHttp\Client;
@@ -27,8 +27,8 @@ class MyWebService
         $this->client = new Client();
     }
 
-    private function setHeaders(string $endpoint, string $accessToken = null) {
-        if ($endpoint === 'authentications') {
+    private function setHeaders(string $endPoints, string $accessToken = null) {
+        if ($endPoints === 'authentications') {
             return [
                 'Content-Type' => 'application/json'
             ];
@@ -40,7 +40,7 @@ class MyWebService
         }
     }
 
-    private function setSuccessResponse($response) {
+    private function setSuccessResponse($response, $endPoints = null) {
         $statusCode = $response->getStatusCode();
         $getBody = isset(json_decode($response->getBody())->data)
             ? json_decode($response->getBody())->data
@@ -48,6 +48,10 @@ class MyWebService
         $message = isset(json_decode($response->getBody())->message)
             ? json_decode($response->getBody())->message
             : null;
+
+        if ($endPoints === 'authentications') {
+            Session::put('token', $getBody->token->access_token);
+        }
 
         return response()->json([
             'status' => 'success',
@@ -68,14 +72,15 @@ class MyWebService
     }
 
     public function get($payload = null, string $query = null) {
-        $accessToken = ''; // get dari session
-        $url = $this->fullURL . ($query ? $query : '');
+        $fullURL = $this->fullURL . ($query ? $query : '');
+        $fullParams = $this->endPoints . ($query ? $query : '');
+        $accessToken = Session::get('token');
 
         try {
             $response = $this->client->get(
-                $url,
+                $fullURL,
                 [
-                    RequestOptions::HEADERS => $this->setHeaders($this->endPoints, $accessToken),
+                    RequestOptions::HEADERS => $this->setHeaders($fullParams, $accessToken),
                     RequestOptions::JSON => $payload,
                 ]
             );
@@ -89,16 +94,21 @@ class MyWebService
     }
 
     public function post($payload, string $query = null) {
-        $accessToken = ''; // get dari session
         $fullURL = $this->fullURL . ($query ? $query : '');
+
+        if ($this->endPoints !== 'authentications') {
+            $accessToken = Session::get('token');
+        }
 
         try {
             $response = $this->client->post($fullURL, [
-                RequestOptions::HEADERS => $this->setHeaders($this->endPoints, $accessToken),
+                RequestOptions::HEADERS => $this->setHeaders(
+                    $this->endPoints, $this->endPoints === 'authentications' ? '' : $accessToken,
+                ),
                 RequestOptions::JSON => $payload,
             ]);
 
-            return $this->setSuccessResponse($response);
+            return $this->setSuccessResponse($response, $this->endPoints);
         } catch (ClientException $e) {
             return $this->setBadResponse($e);
         } catch (RequestException $e) {
@@ -107,12 +117,12 @@ class MyWebService
     }
 
     public function put($payload = null, string $query = null) {
-        $accessToken = ''; // get dari session
-        $url = $this->fullURL . ($query ? $query : '');
+        $fullURL = $this->fullURL . ($query ? $query : '');
+        $accessToken = Session::get('token');
 
         try {
             $response = $this->client->put(
-                $url,
+                $fullURL,
                 [
                     RequestOptions::HEADERS => $this->setHeaders($this->endPoints, $accessToken),
                     RequestOptions::JSON => $payload,
@@ -128,16 +138,20 @@ class MyWebService
     }
 
     public function delete($payload = null, string $query = null) {
-        $accessToken = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vc2ltYWstc3RtaWtiZGctYXBpLnRlc3QvYXBpL2F1dGhlbnRpY2F0aW9ucyIsImlhdCI6MTcwODA3NTU3OCwiZXhwIjoxNzA4MDk3MTc4LCJuYmYiOjE3MDgwNzU1NzgsImp0aSI6IkJTdW5jUDdrc1BpcUhZb3EiLCJzdWIiOiIyIiwicHJ2IjoiMzY2ZjY0MDJjZTVlYTBhOTE4ODI1NTJiZDk5NjQ4Yzg3YzhjMTkzZiJ9.KlbSpdkhrCaFm76H_fz_BWGVXgTODUd3VR7uHqOemqo'; // get dari session
+        $accessToken = Session::get('token');
 
-        $deleteHeaders = [
+        $headers = [
+            'Authorization' => 'Bearer ' . $accessToken,
             'Content-Type' => 'application/json',
-            'Authorization' => 'Bearer ' . $accessToken
         ];
+
+        if ($this->endPoints === 'authentications') {
+            Session::remove('token');
+        }
 
         try {
             $response = $this->client->delete($this->fullURL, [
-                RequestOptions::HEADERS => $deleteHeaders,
+                RequestOptions::HEADERS => $headers,
                 RequestOptions::JSON => $payload,
             ]);
 

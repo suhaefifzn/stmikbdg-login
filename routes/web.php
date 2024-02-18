@@ -19,7 +19,12 @@ use App\Http\Controllers\AuthController;
 // * Route - authentications
 Route::controller(AuthController::class)
     ->group(function () {
-        Route::get('/login', 'index');
+        Route::get('/', function () {
+            return redirect()->route('login');
+        });
+
+        Route::get('/login', 'index')->name('login');
         Route::post('/authenticate', 'authenticate');
-        Route::get('/logout', 'logout');
+        Route::get('/logout', 'logout')->middleware('auth.token');
+        Route::get('/verify', 'redirectToDestination')->middleware('auth.token');
     });

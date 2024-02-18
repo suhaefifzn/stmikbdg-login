@@ -22,6 +22,10 @@ class AuthService extends MyWebService
         return $this->post($payload, '?platform=web');
     }
 
+    public function validateUserSiteAccess($siteURL) {
+        return $this->get(null, '/check/site?url=' . $siteURL);
+    }
+
     public function logout() {
         return $this->delete();
     }
