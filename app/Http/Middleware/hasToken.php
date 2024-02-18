@@ -19,7 +19,9 @@ class hasToken
         if (Session::exists('token')) {
             return $next($request);
         } else {
-            return redirect()->route('login');
+            $siteDst = $request->query('site');
+
+            return redirect('login?site=' . $siteDst);
         }
     }
 }

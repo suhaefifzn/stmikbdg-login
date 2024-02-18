@@ -18,7 +18,7 @@ class AuthController extends Controller
     }
 
     public function index(Request $request) {
-        $siteDst = filter_var($request->query('site'));
+        $siteDst = filter_var($request->query('site'), FILTER_VALIDATE_URL);
 
         if (!$siteDst) {
             if (Session::exists('token')) {
@@ -84,7 +84,6 @@ class AuthController extends Controller
 
     public function redirectToDestination(Request $request) {
         $siteDst = filter_var($request->query('site'), FILTER_VALIDATE_URL);
-
 
         if ($siteDst) {
             $validateAccess = $this->service->validateUserSiteAccess($siteDst);
