@@ -149,6 +149,7 @@
 
                     const url = new URL(window.location.href);
                     const siteDst = new URL(url.searchParams.get('site')).hostname;
+                    const siteDstPort = new URL(url.searchParams.get('site')).port;
 
                     $.ajax({
                         url: '/authenticate',
@@ -160,7 +161,7 @@
                         },
                         success: (response, status, xhr) => {
                             if (xhr.status === 201) {
-                                return window.location = `/verify?site=http://${siteDst}`;
+                                return window.location = `/verify?site=http://${siteDst}:${siteDstPort}`;
                             }
                         },
                         error: (xhr, status) => {
