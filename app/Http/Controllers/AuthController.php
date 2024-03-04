@@ -87,12 +87,14 @@ class AuthController extends Controller
 
         if ($siteDst) {
             $validateAccess = $this->service->validateUserSiteAccess($siteDst);
-            $statusValidate = $validateAccess->getData('data')['status'];
+            $statusCode = $validateAccess->getStatusCode();
 
-            if ($statusValidate === 'fail') {
+            if ($statusCode == 403) {
                 return view('auth.forbidden', [
                     'message' => $validateAccess->getData('data')['message'],
                 ]);
+            } else if ($statusCode == 401) {
+                return redirect('/logout?site=' . $siteDst);
             }
         } else {
             return 'Alamat web yang akan diakses setelah login tidak ditemukan';
