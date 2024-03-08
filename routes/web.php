@@ -26,5 +26,5 @@ Route::controller(AuthController::class)
         Route::get('/login', 'index')->name('login');
         Route::post('/authenticate', 'authenticate');
         Route::get('/logout', 'logout')->middleware('auth.token');
-        Route::get('/verify', 'redirectToDestination')->middleware('auth.token');
+        Route::get('/verify', 'verifyUserSiteAccess')->middleware('auth.token');
     });

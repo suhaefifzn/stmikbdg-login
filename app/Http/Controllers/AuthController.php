@@ -60,6 +60,7 @@ class AuthController extends Controller
         $login = $this->service->login($request->email, $request->password);
 
         if($login->getData('data')['status'] === 'success') {
+            Session::put('roles', $login->getData('data')['data']['roles']);
             return $login;
         }
 
@@ -82,24 +83,65 @@ class AuthController extends Controller
         return redirect('login?site=' . $siteDstPayload ? $siteDstPayload : $siteDstQuery);
     }
 
-    public function redirectToDestination(Request $request) {
+    public function verifyUserSiteAccess(Request $request) {
         $siteDst = filter_var($request->query('site'), FILTER_VALIDATE_URL);
+        $hasAccess = self::hasSiteAccess($siteDst);
 
+        if (!filter_var($hasAccess, FILTER_VALIDATE_BOOLEAN)) {
+            return $hasAccess;
+        }
+
+        if (!$request->query('role')) {
+            $getUserRoles = self::getUserRoles();
+
+            if ($getUserRoles->count() === 1) {
+                return self::redirectToSiteDst($siteDst, $getUserRoles->keys()[0]);
+            }
+
+            return view('auth.roles', [
+                'site' => $siteDst,
+                'roles' => $getUserRoles->keys(),
+            ]);
+        }
+
+        return self::redirectToSiteDst($siteDst, $request->query('role'));
+    }
+
+    public function redirectToSiteDst($siteDst = null, $role = null) {
         if ($siteDst) {
-            $validateAccess = $this->service->validateUserSiteAccess($siteDst);
-            $statusCode = $validateAccess->getStatusCode();
+            $hasAccess = self::hasSiteAccess($siteDst);
 
-            if ($statusCode == 403) {
-                return view('auth.forbidden', [
-                    'message' => $validateAccess->getData('data')['message'],
-                ]);
-            } else if ($statusCode == 401) {
-                return redirect('/logout?site=' . $siteDst);
+            if (!filter_var($hasAccess, FILTER_VALIDATE_BOOLEAN)) {
+                return $hasAccess;
             }
         } else {
             return 'Alamat web yang akan diakses setelah login tidak ditemukan';
         }
 
-        return redirect()->away($siteDst . '?token=' . Session::get('token'));
+        return redirect()->away($siteDst . '?token=' . Session::get('token') . '&role=' . $role);
+    }
+
+    private function hasSiteAccess($site) {
+        $validateAccess = $this->service->validateUserSiteAccess($site);
+        $statusCode = $validateAccess->getStatusCode();
+
+        if ($statusCode == 403) {
+            return view('auth.forbidden', [
+                'message' => $validateAccess->getData('data')['message'],
+            ]);
+        } else if ($statusCode == 401) {
+            return redirect('/logout?site=' . $site);
+        }
+
+        return true;
+    }
+
+    private function getUserRoles() {
+        $roles = collect(Session::get('roles'));
+        $activeRoles = $roles->filter(function ($value) {
+            return $value === true;
+        });
+
+        return $activeRoles;
     }
 }
