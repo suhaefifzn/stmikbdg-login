@@ -21,6 +21,11 @@ class AuthController extends Controller
         $siteDst = filter_var($request->query('site'), FILTER_VALIDATE_URL);
 
         if (!$siteDst) {
+            /**
+             * Jika user langsung mengakses alamat loginnya saja, maka tidak ada site destination
+             * Akan tetapi, bisa saja user telah login dan memiliki token sebelumnya
+             * Maka cek token, jika valid tampilkan daftar web yang bisa diaksesnya
+             */
             if (Session::exists('token')) {
                 $validateAccess = $this->service->validateUserSiteAccess($siteDst);
                 $statusValidate = $validateAccess->getData('data')['status'];
@@ -37,7 +42,7 @@ class AuthController extends Controller
         }
 
         if (Session::exists('token')) {
-            return redirect()->away($siteDst . '?token=' . Session::get('token'));
+            return redirect('/verify?site=' . $siteDst);
         }
 
         return view('auth.index');

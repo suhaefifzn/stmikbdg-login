@@ -30,8 +30,7 @@
         <main>
             <div class="container mt-3">
                 <p>
-                    Akun Anda memilik banyak role untuk web <b><i>{{ $site }}</i></b>.
-                    <br/>Silahkan pilih satu diantara beberapa role berikut:
+                    Akun Anda memiliki beberapa role aktif. Silahkan pilih satu diantara beberapa role berikut untuk mengakses <i>{{ $site }}</i>. Jika setelah dipilih muncul pesan "...Forbidden", maka web tersebut tidak menyediakan role yang Anda pilih.
                 </p>
                 @php
                     $setRoles = [];
@@ -69,7 +68,7 @@
                                 href="/verify?site={{ $site }}&role={{ $role }}"
                                 class="text-decoration-none"
                             >
-                                {{ $key }}
+                                {{ $key === 'Developer' ? 'Developer (Belum Difungsikan)' : $key }}
                             </a>
                         </li>
                     @endforeach
