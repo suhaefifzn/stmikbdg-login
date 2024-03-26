@@ -6,8 +6,8 @@ use Illuminate\Http\Request;
 
 // * Services
 use App\Models\AuthService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Session;
 
 class AuthController extends Controller
 {
@@ -26,7 +26,7 @@ class AuthController extends Controller
              * Akan tetapi, bisa saja user telah login dan memiliki token sebelumnya
              * Maka cek token, jika valid tampilkan daftar web yang bisa diaksesnya
              */
-            if (Session::exists('token')) {
+            if (Cache::has(request()->ip() . '-token')) {
                 $validateAccess = $this->service->validateUserSiteAccess($siteDst);
                 $statusValidate = $validateAccess->getData('data')['status'];
 
@@ -41,7 +41,7 @@ class AuthController extends Controller
             return 'Alamat web yang akan diakses setelah login tidak ditemukan';
         }
 
-        if (Session::exists('token')) {
+        if (Cache::has(request()->ip() . '-token')) {
             return redirect('/verify?site=' . $siteDst);
         }
 
@@ -65,7 +65,22 @@ class AuthController extends Controller
         $login = $this->service->login($request->email, $request->password);
 
         if($login->getData('data')['status'] === 'success') {
-            Session::put('roles', $login->getData('data')['data']['roles']);
+            // simpan token dan roles user ke cache dengan main key ip
+            $keyTokenCache = request()->ip() . '-token';
+            $keyRolesCache = request()->ip() . '-roles';
+
+            Cache::put(
+                $keyTokenCache,
+                $login->getData('data')['data']['token']['access_token'],
+                now()->addMinutes(355)
+            );
+
+            Cache::put(
+                $keyRolesCache,
+                $login->getData('data')['data']['roles'],
+                now()->addMinutes(355)
+            );
+
             return $login;
         }
 
@@ -84,6 +99,9 @@ class AuthController extends Controller
         }
 
         $this->service->logout();
+
+        Cache::forget(request()->ip() . '-token');
+        Cache::forget(request()->ip() . '-roles');
 
         return redirect('login?site=' . $siteDstPayload ? $siteDstPayload : $siteDstQuery);
     }
@@ -123,7 +141,9 @@ class AuthController extends Controller
             return 'Alamat web yang akan diakses setelah login tidak ditemukan';
         }
 
-        return redirect()->away($siteDst . '?token=' . Session::get('token') . '&role=' . $role);
+        return redirect()->away(
+            $siteDst . '?token=' . Cache::get(request()->ip() . '-token') . '&role=' . $role
+        );
     }
 
     public function requestOTPByEmail(Request $request) {
@@ -162,7 +182,7 @@ class AuthController extends Controller
     }
 
     private function getUserRoles() {
-        $roles = collect(Session::get('roles'));
+        $roles = collect(Cache::get(request()->ip() . '-roles'));
         $activeRoles = $roles->filter(function ($value) {
             return $value === true;
         });

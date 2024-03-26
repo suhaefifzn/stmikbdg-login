@@ -341,7 +341,7 @@
                     ) {
                         return Swal.fire({
                             icon: 'warning',
-                            html: 'Pastikan semua field telah terisi',
+                            html: 'Pastikan semua field telah terisi dengan benar',
                             toast: true,
                             timer: 2000,
                             timerProgressBar: true,

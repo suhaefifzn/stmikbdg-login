@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Cache;
 
 // * Guzzle
 use GuzzleHttp\Client;
@@ -27,20 +27,14 @@ class MyWebService
         $this->client = new Client();
     }
 
-    private function setHeaders(string $endPoints, string $accessToken = null) {
-        if ($endPoints === 'authentications') {
-            return [
-                'Content-Type' => 'application/json'
-            ];
-        } else {
-            return [
-                'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $accessToken
-            ];
-        }
+    private function setHeaders(string $accessToken) {
+        return [
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer ' . $accessToken
+        ];
     }
 
-    private function setSuccessResponse($response, $endPoints = null, $query = null) {
+    private function setSuccessResponse($response, $endPoints = null) {
         $statusCode = $response->getStatusCode();
         $getBody = isset(json_decode($response->getBody())->data)
             ? json_decode($response->getBody())->data
@@ -48,10 +42,6 @@ class MyWebService
         $message = isset(json_decode($response->getBody())->message)
             ? json_decode($response->getBody())->message
             : null;
-
-        if ($endPoints === 'authentications' and $query === '?platform=web') {
-            Session::put('token', $getBody->token->access_token);
-        }
 
         return response()->json([
             'status' => 'success',
@@ -73,17 +63,14 @@ class MyWebService
 
     public function get($payload = null, string $query = null) {
         $fullURL = $this->fullURL . ($query ? $query : '');
-        $fullParams = $this->endPoints . ($query ? $query : '');
-        $accessToken = Session::get('token');
+        $accessToken = Cache::get(request()->ip() . '-token');
 
         try {
             $response = $this->client->get(
-                $fullURL,
-                [
-                    RequestOptions::HEADERS => $this->setHeaders($fullParams, $accessToken),
-                    RequestOptions::JSON => $payload,
-                ]
-            );
+                $fullURL, [
+                RequestOptions::HEADERS => $this->setHeaders($accessToken),
+                RequestOptions::JSON => $payload,
+            ]);
 
             return $this->setSuccessResponse($response);
         } catch (ClientException $e) {
@@ -95,16 +82,18 @@ class MyWebService
 
     public function post($payload, string $query = null) {
         $fullURL = $this->fullURL . ($query ? $query : '');
+        $loginHeaders = [
+            'Content-Type' => 'application/json'
+        ];
 
-        if ($this->endPoints !== 'authentications') {
-            $accessToken = Session::get('token');
-        }
+        $headers = $this->endPoints === 'authentications'
+            ? $loginHeaders
+            : $this->setHeaders(Cache::get(request()->ip() . '-token'));
 
         try {
-            $response = $this->client->post($fullURL, [
-                RequestOptions::HEADERS => $this->setHeaders(
-                    $this->endPoints, $this->endPoints == 'authentications' ? '' : $accessToken,
-                ),
+            $response = $this->client->post(
+                $fullURL, [
+                RequestOptions::HEADERS => $headers,
                 RequestOptions::JSON => $payload,
             ]);
 
@@ -118,16 +107,14 @@ class MyWebService
 
     public function put($payload = null, string $query = null) {
         $fullURL = $this->fullURL . ($query ? $query : '');
-        $accessToken = Session::get('token');
+        $accessToken = Cache::get(request()->ip() . '-token');
 
         try {
             $response = $this->client->put(
-                $fullURL,
-                [
-                    RequestOptions::HEADERS => $this->setHeaders($this->endPoints, $accessToken),
-                    RequestOptions::JSON => $payload,
-                ]
-            );
+                $fullURL, [
+                RequestOptions::HEADERS => $this->setHeaders($accessToken),
+                RequestOptions::JSON => $payload,
+            ]);
 
             return $this->setSuccessResponse($response);
         } catch (ClientException $e) {
@@ -138,20 +125,13 @@ class MyWebService
     }
 
     public function delete($payload = null, string $query = null) {
-        $accessToken = Session::get('token');
-
-        $headers = [
-            'Authorization' => 'Bearer ' . $accessToken,
-            'Content-Type' => 'application/json',
-        ];
-
-        if ($this->endPoints === 'authentications') {
-            Session::remove('token');
-        }
+        $fullURL = $this->fullURL . ($query ? $query : '');
+        $accessToken = Cache::get(request()->ip() . '-token');
 
         try {
-            $response = $this->client->delete($this->fullURL, [
-                RequestOptions::HEADERS => $headers,
+            $response = $this->client->delete(
+                $fullURL, [
+                RequestOptions::HEADERS => $this->setHeaders($accessToken),
                 RequestOptions::JSON => $payload,
             ]);
 
