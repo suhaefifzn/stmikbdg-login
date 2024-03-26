@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="author" content="STMIK Bandung">
-    <title>STMIK Bandung - Forbidden Access</title>
+    <title>STMIK Bandung - Select Role</title>
 
     {{-- Favicons --}}
     <link rel="apple-touch-icon" sizes="180x180" href="/images/favicons/apple-touch-icon.png">
@@ -28,9 +28,9 @@
 </head>
     <body>
         <main>
-            <div class="container mt-3">
+            <div class="container pt-3">
                 <p>
-                    Akun Anda memiliki beberapa role aktif. Silahkan pilih satu diantara beberapa role berikut untuk mengakses <i>{{ $site }}</i>. Jika setelah dipilih muncul pesan "...Forbidden", maka web tersebut tidak menyediakan role yang Anda pilih.
+                    Akun Anda memiliki beberapa role aktif. Silahkan pilih satu diantara beberapa role berikut untuk mengakses <i>{{ $site }}</i>. Jika setelah dipilih muncul pesan "...Forbidden", maka web tersebut tidak menyediakan role yang Anda inginkan.
                 </p>
                 @php
                     $setRoles = [];

@@ -27,4 +27,8 @@ Route::controller(AuthController::class)
         Route::post('/authenticate', 'authenticate');
         Route::get('/logout', 'logout')->middleware('auth.token');
         Route::get('/verify', 'verifyUserSiteAccess')->middleware('auth.token');
+
+        // lupa password
+        Route::post('/forgot-password/request-otp', 'requestOTPByEmail');
+        Route::post('/forgot-password/reset', 'confirmResetPasswordByOTP');
     });

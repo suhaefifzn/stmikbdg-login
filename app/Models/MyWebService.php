@@ -40,7 +40,7 @@ class MyWebService
         }
     }
 
-    private function setSuccessResponse($response, $endPoints = null) {
+    private function setSuccessResponse($response, $endPoints = null, $query = null) {
         $statusCode = $response->getStatusCode();
         $getBody = isset(json_decode($response->getBody())->data)
             ? json_decode($response->getBody())->data
@@ -49,7 +49,7 @@ class MyWebService
             ? json_decode($response->getBody())->message
             : null;
 
-        if ($endPoints === 'authentications') {
+        if ($endPoints === 'authentications' and $query === '?platform=web') {
             Session::put('token', $getBody->token->access_token);
         }
 
@@ -103,12 +103,12 @@ class MyWebService
         try {
             $response = $this->client->post($fullURL, [
                 RequestOptions::HEADERS => $this->setHeaders(
-                    $this->endPoints, $this->endPoints === 'authentications' ? '' : $accessToken,
+                    $this->endPoints, $this->endPoints == 'authentications' ? '' : $accessToken,
                 ),
                 RequestOptions::JSON => $payload,
             ]);
 
-            return $this->setSuccessResponse($response, $this->endPoints);
+            return $this->setSuccessResponse($response, $this->endPoints, $query);
         } catch (ClientException $e) {
             return $this->setBadResponse($e);
         } catch (RequestException $e) {

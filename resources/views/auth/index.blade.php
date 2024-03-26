@@ -7,7 +7,7 @@
     <meta name="author" content="STMIK Bandung">
     <title>STMIK Bandung - Login</title>
 
-    {{-- Favicomns --}}
+    {{-- Favicons --}}
     <link rel="apple-touch-icon" sizes="180x180" href="/images/favicons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/images/favicons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/images/favicons/favicon-16x16.png">
@@ -103,6 +103,10 @@
         .bd-mode-toggle .dropdown-menu .active .bi {
             display: block !important;
         }
+
+        #forgotPasswordText {
+            cursor: pointer;
+        }
     </style>
 </head>
     <body class="d-flex align-items-center py-4 bg-body-tertiary">
@@ -128,11 +132,60 @@
                     <label for="password">Password</label>
                 </div>
                 <button class="btn btn-primary w-100 py-2 d-flex align-items-center justify-content-center gap-1" type="submit">
-                <i data-feather="log-in" style="width: 1.1em;"></i>
-                Login
+                    <i data-feather="log-in" style="width: 1.1em;"></i>
+                    Login
                 </button>
+                <div class="mt-2">
+                    <span id="forgotPasswordText" class="small text-primary">
+                        Lupa password?
+                    </span>
+                </div>
             </form>
         </main>
+
+        {{-- Bootstrap Modal --}}
+        <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true" id="modalForgotPassword">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5">Lupa Password</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="POST" id="formForgotPassword">
+                        @csrf
+                        <div class="modal-body">
+                            <label for="verifyEmail" class="form-label">Email</label>
+                            <div class="input-group mb-3">
+                                <input type="email" class="form-control" id="verifyEmail" name="email" required>
+                                <button class="btn btn-outline-dark" title="Kirim OTP" id="buttonVerifyEmail" type="button">
+                                    <i data-feather="send" class="font-monospace" style="width: 1.1em;" id="sendIcon"></i>
+                                    <div class="spinner-border text-primary spinner-border-sm d-none"></div>
+                                </button>
+                            </div>
+                            <div class="mb-3">
+                                <label for="otp" class="form-label">OTP</label>
+                                <input type="text" class="form-control" id="otp" name="otp" required disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="newPassword" class="form-label">Password baru</label>
+                                <input type="password" class="form-control" id="newPassword" name="new_password" required disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirmPassword" class="form-label">Konfirmasi password</label>
+                                <input type="password" class="form-control" id="confirmPassword" name="confirm_password" required disabled>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary" id="buttonResetPassword">
+                                <span id="buttonResetPasswordText">Simpan</span>
+                                <div class="spinner-border text-light spinner-border-sm d-none"></div>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
 
         {{-- Bootstrap --}}
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -196,6 +249,169 @@
                         }
                     })
                 });
+
+                // show modal forgot password for send email
+                $('#forgotPasswordText').on('click', (e) => {
+                    e.preventDefault();
+                    $('#formForgotPassword #verifyEmail').val('');
+                    $('#otp, #newPassword, #confirmPassword').prop('disabled', true).val('');
+                    $('#modalForgotPassword').modal('show');
+                });
+
+                // when user press enter di field email
+                $('#verifyEmail').on('keypress', (e) => {
+                    if (e.which == 13) {
+                        $('#buttonVerifyEmail').trigger('click');
+                        e.preventDefault();
+                    }
+                })
+
+                $('#buttonVerifyEmail').on('click', (e) => {
+                    e.preventDefault();
+
+                    $.ajax({
+                        url: '/forgot-password/request-otp',
+                        type: 'POST',
+                        data: {
+                            _token: $('#formForgotPassword input[name="_token"]').val(),
+                            email: $('#formForgotPassword #verifyEmail').val(),
+                        },
+                        beforeSend: () => {
+                            $('#formForgotPassword #buttonVerifyEmail #sendIcon').addClass('d-none');
+                            $('#formForgotPassword #buttonVerifyEmail .spinner-border').removeClass('d-none');
+                        },
+                        success: (response, status, xhr) => {
+                            Swal.fire({
+                                icon: 'success',
+                                html: response.message,
+                                toast: true,
+                                timer: 5000,
+                                timerProgressBar: true,
+                                position: 'top-right',
+                                showConfirmButton: false,
+                            });
+
+                            $('#otp, #newPassword, #confirmPassword').prop('disabled', false);
+                        },
+                        error: (xhr, status) => {
+                            console.log(xhr);
+
+                            if (xhr.status == 400) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    html: xhr.responseJSON.message,
+                                    toast: true,
+                                    timer: 1500,
+                                    timerProgressBar: true,
+                                    position: 'top-right',
+                                    showConfirmButton: false,
+                                });
+                            } else if (xhr.status == 422) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    html: 'Nilai email tidak boleh kosong dan harus merupakan email yang valid',
+                                    toast: true,
+                                    timer: 5000,
+                                    timerProgressBar: true,
+                                    position: 'top-right',
+                                    showConfirmButton: false,
+                                });
+                            }
+                        },
+                        complete: () => {
+                            $('#formForgotPassword #buttonVerifyEmail .spinner-border').addClass('d-none');
+                            $('#formForgotPassword #buttonVerifyEmail #sendIcon').removeClass('d-none');
+                        }
+                    });
+                });
+
+                $('#formForgotPassword').on('submit', (e) => {
+                    e.preventDefault();
+
+                    const formData = {
+                        otp: $('#formForgotPassword #otp').val(),
+                        new_password: $('#formForgotPassword #newPassword').val(),
+                        confirm_password: $('#formForgotPassword #confirmPassword').val(),
+                    };
+
+                    if (
+                        formData.otp.length < 6
+                        || formData.new_password.length < 8
+                        || formData.confirm_password.length < 8
+                    ) {
+                        return Swal.fire({
+                            icon: 'warning',
+                            html: 'Pastikan semua field telah terisi',
+                            toast: true,
+                            timer: 2000,
+                            timerProgressBar: true,
+                            position: 'top-right',
+                            showConfirmButton: false,
+                        });
+                    }
+
+                    $.ajax({
+                        url: '/forgot-password/reset',
+                        type: 'POST',
+                        data: {
+                            _token: $('#formForgotPassword input[name="_token"]').val(),
+                            email: $('#formForgotPassword #verifyEmail').val(),
+                            ...formData,
+                        },
+                        beforeSend: () => {
+                            $('#formForgotPassword #buttonResetPassword #buttonResetPasswordText').addClass('d-none');
+                            $('#formForgotPassword #buttonResetPassword .spinner-border').removeClass('d-none');
+                        },
+                        success: (response, status, xhr) => {
+                            Swal.fire({
+                                icon: 'success',
+                                html: response.message,
+                                toast: true,
+                                timer: 3000,
+                                timerProgressBar: true,
+                                position: 'top-right',
+                                showConfirmButton: false,
+                            });
+
+                            $('#modalForgotPassword').modal('hide');
+                        },
+                        error: (xhr, status) => {
+                            console.log(xhr);
+
+                            if (xhr.status == 400) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    html: xhr.responseJSON.message,
+                                    toast: true,
+                                    timer: 1500,
+                                    timerProgressBar: true,
+                                    position: 'top-right',
+                                    showConfirmButton: false,
+                                });
+                            } else if (xhr.status == 422) {
+                                const { errors } = xhr.responseJSON;
+
+                                $.each(errors, (key, value) => {
+                                    if (key === 'new_password' || key === 'confirm_password') {
+                                        Swal.fire({
+                                            icon: 'warning',
+                                            html: 'Nilai password dan konfirmasi password harus sama dan tidak boleh kosong',
+                                            toast: true,
+                                            timer: 5000,
+                                            timerProgressBar: true,
+                                            position: 'top-right',
+                                            showConfirmButton: false,
+                                        });
+                                    }
+                                });
+                            }
+                        },
+                        complete: () => {
+                            $('#formForgotPassword #buttonResetPassword #buttonResetPasswordText').removeClass('d-none');
+                            $('#formForgotPassword #buttonResetPassword .spinner-border').addClass('d-none');
+                        }
+                    });
+                })
             });
         </script>
     </body>

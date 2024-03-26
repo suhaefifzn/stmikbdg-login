@@ -126,6 +126,26 @@ class AuthController extends Controller
         return redirect()->away($siteDst . '?token=' . Session::get('token') . '&role=' . $role);
     }
 
+    public function requestOTPByEmail(Request $request) {
+        $request->validate([
+            'email' => 'string|email'
+        ]);
+
+        return $this->service->verifyEmailForgotPassword($request->email);
+    }
+
+    public function confirmResetPasswordByOTP(Request $request) {
+        $request->validate([
+            'otp' => 'string|min:6|max:6',
+            'new_password' => 'string|min:8|max:64|regex:/^\S*$/u',
+            'confirm_password' => 'string|same:new_password'
+        ]);
+
+        return $this->service->resetPasswordByOTP(
+            $request->otp, $request->new_password, $request->confirm_password
+        );
+    }
+
     private function hasSiteAccess($site) {
         $validateAccess = $this->service->validateUserSiteAccess($site);
         $statusCode = $validateAccess->getStatusCode();
@@ -149,4 +169,5 @@ class AuthController extends Controller
 
         return $activeRoles;
     }
+
 }

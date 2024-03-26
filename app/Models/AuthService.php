@@ -22,11 +22,29 @@ class AuthService extends MyWebService
         return $this->post($payload, '?platform=web');
     }
 
-    public function validateUserSiteAccess($siteURL) {
+    public function validateUserSiteAccess(string $siteURL) {
         return $this->get(null, '/check/site?url=' . $siteURL);
     }
 
     public function logout() {
         return $this->delete();
+    }
+
+    public function verifyEmailForgotPassword(string $email) {
+        $payload = [
+            'email' => $email,
+        ];
+
+        return $this->post($payload, '/password/forgot');
+    }
+
+    public function resetPasswordByOTP(string $otp, string $newPassword, string $confirmPassword) {
+        $payload = [
+            'otp' => $otp,
+            'password' => $newPassword,
+            'confirm_password' => $confirmPassword,
+        ];
+
+        return $this->post($payload, '/password/reset');
     }
 }

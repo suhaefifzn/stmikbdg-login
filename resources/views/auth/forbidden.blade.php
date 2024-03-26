@@ -28,7 +28,7 @@
 </head>
     <body>
         <main>
-            <div class="container mt-3">
+            <div class="container pt-3">
                 <p>{!! $message !!}</p>
             </div>
         </main>
