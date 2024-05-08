@@ -63,7 +63,7 @@ class MyWebService
 
     public function get($payload = null, string $query = null) {
         $fullURL = $this->fullURL . ($query ? $query : '');
-        $accessToken = Cache::get(request()->ip() . '-token');
+        $accessToken = request()->cookie('user_token');
 
         try {
             $response = $this->client->get(
@@ -88,7 +88,7 @@ class MyWebService
 
         $headers = $this->endPoints === 'authentications'
             ? $loginHeaders
-            : $this->setHeaders(Cache::get(request()->ip() . '-token'));
+            : $this->setHeaders(request()->cookie('user_token'));
 
         try {
             $response = $this->client->post(
@@ -107,7 +107,7 @@ class MyWebService
 
     public function put($payload = null, string $query = null) {
         $fullURL = $this->fullURL . ($query ? $query : '');
-        $accessToken = Cache::get(request()->ip() . '-token');
+        $accessToken = request()->cookie('user_token');
 
         try {
             $response = $this->client->put(
@@ -126,7 +126,7 @@ class MyWebService
 
     public function delete($payload = null, string $query = null) {
         $fullURL = $this->fullURL . ($query ? $query : '');
-        $accessToken = Cache::get(request()->ip() . '-token');
+        $accessToken = request()->cookie('user_token');
 
         try {
             $response = $this->client->delete(

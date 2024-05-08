@@ -16,7 +16,7 @@ class hasToken
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (Cache::has(request()->ip() . '-token')) {
+        if (request()->cookie('user_token') !== null) {
             return $next($request);
         } else {
             $siteDst = $request->query('site');

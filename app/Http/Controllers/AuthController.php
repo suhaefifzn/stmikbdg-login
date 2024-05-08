@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 
 // * Services
 use App\Models\AuthService;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends Controller
@@ -26,7 +26,7 @@ class AuthController extends Controller
              * Akan tetapi, bisa saja user telah login dan memiliki token sebelumnya
              * Maka cek token, jika valid tampilkan daftar web yang bisa diaksesnya
              */
-            if (Cache::has(request()->ip() . '-token')) {
+            if (request()->cookie('user_token') !== null) {
                 $validateAccess = $this->service->validateUserSiteAccess($siteDst);
                 $statusValidate = $validateAccess->getData('data')['status'];
 
@@ -41,7 +41,7 @@ class AuthController extends Controller
             return 'Alamat web yang akan diakses setelah login tidak ditemukan';
         }
 
-        if (Cache::has(request()->ip() . '-token')) {
+        if (request()->cookie('user_token') !== null) {
             return redirect('/verify?site=' . $siteDst);
         }
 
@@ -65,23 +65,13 @@ class AuthController extends Controller
         $login = $this->service->login($request->email, $request->password);
 
         if($login->getData('data')['status'] === 'success') {
-            // simpan token dan roles user ke cache dengan main key ip
-            $keyTokenCache = request()->ip() . '-token';
-            $keyRolesCache = request()->ip() . '-roles';
+            // simpan token dan roles user sebagai cookies
+            $accessToken = $login->getData('data')['data']['token']['access_token'];
+            $userRoles = $login->getData('data')['data']['roles'];
+            $cookieToken = cookie('user_token', $accessToken, 355);
+            $cookieRoles = cookie('user_roles', serialize($userRoles), 355);
 
-            Cache::put(
-                $keyTokenCache,
-                $login->getData('data')['data']['token']['access_token'],
-                now()->addMinutes(355)
-            );
-
-            Cache::put(
-                $keyRolesCache,
-                $login->getData('data')['data']['roles'],
-                now()->addMinutes(355)
-            );
-
-            return $login;
+            return $login->cookie($cookieToken)->cookie($cookieRoles);
         }
 
         // login failed
@@ -100,10 +90,11 @@ class AuthController extends Controller
 
         $this->service->logout();
 
-        Cache::forget(request()->ip() . '-token');
-        Cache::forget(request()->ip() . '-roles');
+        $cookieToken = Cookie::forget('user_token');
+        $cookieRoles = Cookie::forget('user_roles');
 
-        return redirect('login?site=' . $siteDstPayload ? $siteDstPayload : $siteDstQuery);
+        return redirect('login?site=' . $siteDstPayload ? $siteDstPayload : $siteDstQuery)
+            ->withCookie($cookieToken)->withCookie($cookieRoles);
     }
 
     public function verifyUserSiteAccess(Request $request) {
@@ -142,7 +133,7 @@ class AuthController extends Controller
         }
 
         return redirect()->away(
-            $siteDst . '?token=' . Cache::get(request()->ip() . '-token') . '&role=' . $role
+            $siteDst . '?token=' . request()->cookie('user_token') . '&role=' . $role
         );
     }
 
@@ -182,7 +173,7 @@ class AuthController extends Controller
     }
 
     private function getUserRoles() {
-        $roles = collect(Cache::get(request()->ip() . '-roles'));
+        $roles = collect(unserialize(request()->cookie('user_roles')));
         $activeRoles = $roles->filter(function ($value) {
             return $value === true;
         });
