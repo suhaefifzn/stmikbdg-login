@@ -171,11 +171,13 @@ class AuthController extends Controller
     private function hasSiteAccess($site) {
         $validateAccess = $this->service->validateUserSiteAccess($site);
         $statusCode = $validateAccess->getStatusCode();
+        $siteDetail = $this->service->getSiteInfo($site)->getData('data')['data']['site'];
 
         if ($statusCode == 403) {
             return view('contents.forbidden', [
                 'error' => '403',
-                'message' => $validateAccess->getData('data')['message'],
+                'message' => 'Oops. Maaf, sepertinya Anda tidak memiliki hak akses ke ' . $siteDetail['name'],
+                'site' => $siteDetail,
             ]);
         } else if ($statusCode == 401) {
             return redirect('/logout?site=' . $site);
