@@ -47,4 +47,10 @@ class AuthService extends MyWebService
 
         return $this->post($payload, '/password/reset');
     }
+
+    public function getSiteInfo(string $url) {
+        $query = '?url=' . $url;
+
+        return $this->get(null, ('/detail/site' . $query));
+    }
 }

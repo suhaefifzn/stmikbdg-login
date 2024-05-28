@@ -31,21 +31,24 @@ class AuthController extends Controller
                 $statusValidate = $validateAccess->getData('data')['status'];
 
                 if ($statusValidate === 'success') {
-                    return view('auth.authenticated', [
-                        'message' => 'Verifikasi berhasil. Berikut adalah beberapa situs yang dapat Anda akses:',
+                    return view('contents.authenticated', [
+                        'message' => 'Autentikasi berhasil. Berikut adalah beberapa situs yang dapat Anda akses.',
                         'urls' => $validateAccess->getData('data')['data']['site'],
                     ]);
                 }
             }
 
-            return 'Alamat web yang akan diakses setelah login tidak ditemukan';
+            return view('contents.login', [
+                'error' => '404',
+                'message' => 'Alamat web yang akan Anda akses setelah login tidak ditemukan.'
+            ]);
         }
 
         if (request()->cookie('user_token') !== null) {
             return redirect('/verify?site=' . $siteDst);
         }
 
-        return view('auth.index');
+        return view('auth.index'); // halaman login
     }
 
     public function authenticate(Request $request) {
@@ -85,7 +88,10 @@ class AuthController extends Controller
         $siteDstQuery = filter_var($request->query('site'), FILTER_VALIDATE_URL);
 
         if (!$siteDstPayload || !$siteDstQuery) {
-            return 'Alamat web asal tidak ditemukan';
+            return view('contents.logout', [
+                'error' => '404',
+                'message' => 'Alamat web asal tidak ditemukan.'
+            ]);
         }
 
         $this->service->logout();
@@ -106,15 +112,17 @@ class AuthController extends Controller
         }
 
         if (!$request->query('role')) {
-            $getUserRoles = self::getUserRoles();
+            $getUserRoles = self::getUserRoles($siteDst);
 
-            if ($getUserRoles->count() === 1) {
-                return self::redirectToSiteDst($siteDst, $getUserRoles->keys()[0]);
+            if ($getUserRoles['roles']->count() === 1) {
+                return self::redirectToSiteDst($siteDst, $getUserRoles['roles']->keys()[0]);
             }
 
-            return view('auth.roles', [
-                'site' => $siteDst,
-                'roles' => $getUserRoles->keys(),
+            return view('contents.roles', [
+                'site' => $getUserRoles['site'],
+                'roles' => $getUserRoles['roles']->keys(),
+                'message' => 'Anda memiliki beberapa role aktif. Silahkan pilih role yang sesuai untuk mengakses '
+                    . $getUserRoles['site']['name'] . '.',
             ]);
         }
 
@@ -129,7 +137,10 @@ class AuthController extends Controller
                 return $hasAccess;
             }
         } else {
-            return 'Alamat web yang akan diakses setelah login tidak ditemukan';
+            return view('contents.login', [
+                'error' => '404',
+                'message' => 'Alamat web yang akan Anda akses setelah login tidak ditemukan.'
+            ]);
         }
 
         return redirect()->away(
@@ -162,7 +173,8 @@ class AuthController extends Controller
         $statusCode = $validateAccess->getStatusCode();
 
         if ($statusCode == 403) {
-            return view('auth.forbidden', [
+            return view('contents.forbidden', [
+                'error' => '403',
                 'message' => $validateAccess->getData('data')['message'],
             ]);
         } else if ($statusCode == 401) {
@@ -172,13 +184,24 @@ class AuthController extends Controller
         return true;
     }
 
-    private function getUserRoles() {
+    private function getUserRoles($site) {
+        // check role user
         $roles = collect(unserialize(request()->cookie('user_roles')));
-        $activeRoles = $roles->filter(function ($value) {
+        $userRoles = $roles->filter(function ($value) {
             return $value === true;
-        });
+        })->toArray();
 
-        return $activeRoles;
+        // check role site
+        $site = $this->service->getSiteInfo($site)->getData('data')['data']['site'];
+        $data = [
+            'site' => [
+                'url' => $site['url'],
+                'name' => $site['name']
+            ],
+            'roles' => collect(array_intersect_assoc($userRoles, $site))
+        ];
+
+        return $data;
     }
 
 }
